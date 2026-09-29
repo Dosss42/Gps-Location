@@ -1,2 +1,148 @@
-// For information on how to create your own theme, please refer to:
-// https://ionicframework.com/docs/theming/
+// Design tokens for the app, built from Emil Kowalski's "Apple Design" skill
+// (typography, materials, motion, spacing sections). Every component reads
+// its sizes/colors/spacing from here — nothing is a one-off pixel value
+// chosen by eye. That's what makes the type scale "uniform": there are only
+// six font sizes in the entire app, and every piece of text maps to one of
+// them on purpose.
+
+:root {
+  // ---- Typography -----------------------------------------------------
+  // Each token bundles size + weight + tracking (letter-spacing) + leading
+  // (line-height) together, because the skill is explicit that tracking is
+  // size-specific: bigger text needs tighter (often negative) tracking,
+  // body text needs near-zero tracking and generous leading for readability.
+  --gps-font-family: -apple-system, 'SF Pro Text', 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+
+  --gps-text-display-size: 2.125rem; // 34px — page title ("Where Am I?")
+  --gps-text-display-weight: 700;
+  --gps-text-display-tracking: -0.02em;
+  --gps-text-display-leading: 1.05;
+
+  --gps-text-value-size: 1.75rem; // 28px — the big lat/lng numbers, the address
+  --gps-text-value-weight: 600;
+  --gps-text-value-tracking: -0.015em;
+  --gps-text-value-leading: 1.1;
+
+  --gps-text-title-size: 1.375rem; // 22px — card headers
+  --gps-text-title-weight: 600;
+  --gps-text-title-tracking: -0.01em;
+  --gps-text-title-leading: 1.15;
+
+  --gps-text-body-size: 1.0625rem; // 17px — iOS body default
+  --gps-text-body-weight: 400;
+  --gps-text-body-tracking: 0em;
+  --gps-text-body-leading: 1.5;
+
+  --gps-text-label-size: 0.8125rem; // 13px — small caps labels ("LATITUDE")
+  --gps-text-label-weight: 600;
+  --gps-text-label-tracking: 0.02em;
+  --gps-text-label-leading: 1.3;
+
+  --gps-text-caption-size: 0.8125rem; // 13px — status/help text
+  --gps-text-caption-weight: 400;
+  --gps-text-caption-tracking: 0em;
+  --gps-text-caption-leading: 1.4;
+
+  // ---- Spacing (4px base unit) -----------------------------------------
+  --gps-space-1: 4px;
+  --gps-space-2: 8px;
+  --gps-space-3: 12px;
+  --gps-space-4: 16px;
+  --gps-space-5: 20px;
+  --gps-space-6: 24px;
+  --gps-space-7: 32px;
+  --gps-space-8: 40px;
+  --gps-space-9: 48px;
+
+  // ---- Radius ------------------------------------------------------------
+  --gps-radius-card: 20px;
+  --gps-radius-control: 16px;
+  --gps-radius-pill: 999px;
+
+  // ---- Motion --------------------------------------------------------
+  // CSS transitions can't reproduce true spring physics (that needs a JS
+  // animation loop tracking velocity), so this is a deliberate
+  // approximation of the skill's spring guidance: a curve that starts fast
+  // and settles gently, at durations short enough to feel immediate.
+  --gps-ease-standard: cubic-bezier(0.32, 0.72, 0, 1);
+  --gps-duration-fast: 150ms;
+  --gps-duration-base: 300ms;
+  --gps-duration-slow: 400ms;
+
+  // ---- Surfaces & color (light) ---------------------------------------
+  --gps-bg: #f2f2f7;
+  --gps-surface: #ffffff;
+  --gps-surface-translucent: rgba(255, 255, 255, 0.72);
+  --gps-border-subtle: rgba(60, 60, 67, 0.12);
+  --gps-text-primary: #1c1c1e;
+  --gps-text-secondary: rgba(60, 60, 67, 0.6);
+  --gps-accent: #007aff;
+  --gps-accent-2: #5e5ce6; // secondary hue — gradients read as "designed", not just a flat fill
+  --gps-accent-contrast: #ffffff;
+  --gps-warm: #ff9500;
+  --gps-warm-2: #ff5e3a;
+  --gps-success: #34c759;
+  --gps-warning: #ff9500;
+  --gps-danger: #ff3b30;
+
+  // Plain black shadows read as flat/generic; a shadow tinted toward the
+  // element's own color is what gives modern UI (Linear/Raycast/Vercel-
+  // style) its sense of depth and "glow" instead of just a drop shadow.
+  --gps-shadow-card: 0 1px 2px rgba(28, 28, 30, 0.04), 0 12px 28px rgba(28, 28, 30, 0.07);
+  --gps-glow-accent: 0 10px 24px rgba(0, 122, 255, 0.28);
+  --gps-glow-warm: 0 8px 20px rgba(255, 94, 58, 0.25);
+
+  --gps-gradient-primary: linear-gradient(135deg, var(--gps-accent), var(--gps-accent-2));
+  --gps-gradient-warm: linear-gradient(135deg, var(--gps-warm), var(--gps-warm-2));
+  // A soft mesh of color washes behind the whole app instead of a flat
+  // fill — subtle enough to stay legible, present enough to not look bare.
+  --gps-gradient-bg: radial-gradient(
+      circle at 12% -10%,
+      rgba(0, 122, 255, 0.16) 0%,
+      transparent 45%
+    ),
+    radial-gradient(circle at 100% 0%, rgba(94, 92, 230, 0.14) 0%, transparent 40%),
+    radial-gradient(circle at 90% 90%, rgba(255, 149, 0, 0.1) 0%, transparent 40%),
+    var(--gps-bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --gps-bg: #000000;
+    --gps-surface: #1c1c1e;
+    --gps-surface-translucent: rgba(28, 28, 30, 0.72);
+    --gps-border-subtle: rgba(84, 84, 88, 0.4);
+    --gps-text-primary: #f2f2f7;
+    --gps-text-secondary: rgba(235, 235, 245, 0.6);
+    --gps-accent: #0a84ff;
+    --gps-accent-2: #7d7aff;
+    --gps-accent-contrast: #ffffff;
+    --gps-warm: #ff9f0a;
+    --gps-warm-2: #ff6b4a;
+    --gps-success: #30d158;
+    --gps-warning: #ff9f0a;
+    --gps-danger: #ff453a;
+
+    --gps-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 28px rgba(0, 0, 0, 0.45);
+    --gps-glow-accent: 0 10px 26px rgba(10, 132, 255, 0.35);
+    --gps-glow-warm: 0 8px 22px rgba(255, 107, 74, 0.3);
+
+    --gps-gradient-primary: linear-gradient(135deg, var(--gps-accent), var(--gps-accent-2));
+    --gps-gradient-warm: linear-gradient(135deg, var(--gps-warm), var(--gps-warm-2));
+    --gps-gradient-bg: radial-gradient(
+        circle at 12% -10%,
+        rgba(10, 132, 255, 0.22) 0%,
+        transparent 45%
+      ),
+      radial-gradient(circle at 100% 0%, rgba(125, 122, 255, 0.18) 0%, transparent 40%),
+      radial-gradient(circle at 90% 90%, rgba(255, 107, 74, 0.14) 0%, transparent 40%),
+      var(--gps-bg);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --gps-surface-translucent: var(--gps-surface);
+  }
+}

@@ -1,27 +1,380 @@
-#container {
-  text-align: center;
+// Shared card/typography/button classes (`.gps-label`, `.gps-value`,
+// `.gps-button`, etc.) live in `src/global.scss`. This file holds what's
+// genuinely specific to Home's map-forward layout: the full-bleed map
+// stage, the floating FABs, the pin crosshair, and the persistent sheet.
 
+// ---- Map stage -----------------------------------------------------
+
+// `<ion-content>` establishes the positioning context absolutely
+// positioned children resolve against — but (confirmed by measuring it,
+// after a real bug here) its OWN box spans the full page viewport,
+// including the tab bar's reserved strip at the bottom, not just the
+// space above it. The map filling 100% of that is fine — it's the layer
+// furthest back, nothing needs to click "through" it to reach the tab
+// bar. Anything ELSE bottom-anchored in this stage (the sheet, the FABs)
+// has to explicitly clear the tab bar itself — both are bound to
+// `tabBarHeightPx()` (home.page.ts), the tab bar's REAL measured height,
+// not a guessed CSS constant (a guess shipped here first and was a real
+// bug: it silently made the whole sheet disappear on at least one real
+// device, since that device's actual tab bar wasn't 56px).
+.map-stage {
+  position: absolute;
+  inset: 0;
+}
+
+.gps-map {
+  height: 100%;
+  width: 100%;
+}
+
+// OpenStreetMap's street tiles are drawn once, for light mode, regardless
+// of the device's theme — they don't ship a dark variant. Inverting just
+// the tile layer (not markers/attribution, which live in separate panes)
+// is the standard trick for a map that still reads as "dark mode" instead
+// of a bright rectangle sitting in an otherwise dark app. Satellite
+// imagery is excluded (`:not(.gps-map--satellite)`) — it's a real aerial
+// photo, not a stylized vector map, so inverting it would turn grass
+// magenta and roofs cyan instead of reading as "dark mode."
+@media (prefers-color-scheme: dark) {
+  :host ::ng-deep .gps-map:not(.gps-map--satellite) .leaflet-tile-pane {
+    filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.95) saturate(0.9);
+  }
+}
+
+// Leaflet's built-in attribution control is required (OpenStreetMap's
+// usage policy), but its default styling doesn't match the rest of the
+// app — this restyles it onto the same caption token instead of removing
+// it, and lifts it clear of the persistent sheet's lowest peek height.
+:host ::ng-deep .leaflet-control-attribution {
+  font-size: var(--gps-text-caption-size);
+  background: var(--gps-surface-translucent);
+  backdrop-filter: blur(8px);
+}
+
+:host ::ng-deep .leaflet-bottom {
+  margin-bottom: 18vh;
+}
+
+// The current-position marker (see home.page.ts `renderCurrentPosition`).
+:host ::ng-deep .gps-marker {
+  position: relative;
+  width: 22px;
+  height: 22px;
+}
+
+:host ::ng-deep .gps-marker__dot {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: var(--gps-accent);
+  border: 2px solid var(--gps-accent-contrast);
+  box-shadow: var(--gps-glow-accent);
+}
+
+:host ::ng-deep .gps-marker__pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--gps-accent);
+  opacity: 0.5;
+  animation: gps-pulse 2s var(--gps-ease-standard) infinite;
+}
+
+// A saved location's pin on the map — smaller and in the "warm" hue so it
+// reads as distinct from the current-position marker at a glance.
+:host ::ng-deep .gps-saved-marker {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--gps-warm);
+  border: 2px solid var(--gps-accent-contrast);
+  box-shadow: var(--gps-glow-warm);
+}
+
+// The confirmed manual pin — a teardrop instead of a dot (rotated rounded
+// square is the standard CSS technique for this shape), in the violet
+// "accent2" hue so it's unmistakably a third, distinct kind of marker
+// from both the current-position pulse and the warm saved-location dots.
+:host ::ng-deep .gps-pin-marker {
+  display: block;
+  width: 22px;
+  height: 22px;
+  background: var(--gps-accent-2);
+  border: 3px solid var(--gps-accent-contrast);
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 10px 22px rgba(94, 92, 230, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host ::ng-deep .gps-marker__pulse {
+    animation: none;
+    display: none;
+  }
+}
+
+// ---- Floating action buttons ----------------------------------------
+
+.map-fabs {
+  position: absolute;
+  right: var(--gps-space-5);
+  // `bottom` is set inline via `[style.bottom]="fabBottomOffset()"` —
+  // it tracks the persistent sheet's LIVE breakpoint (see home.page.ts),
+  // since the sheet doesn't stay at one fixed height.
+  display: flex;
+  flex-direction: column;
+  gap: var(--gps-space-4);
+  // Leaflet's own internal panes (tiles/markers/tooltips/popups) use
+  // z-indexes up to ~700, and — because the Leaflet container itself
+  // doesn't establish an isolating stacking context — those compete
+  // directly with siblings in `.map-stage`, not just with each other.
+  // A low z-index here would lose to Leaflet's marker pane wherever this
+  // actually overlaps a marker; comfortably clearing 700 avoids that.
+  z-index: 1000;
+}
+
+.fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  transition: transform var(--gps-duration-fast) var(--gps-ease-standard);
+
+  ion-icon,
+  ion-spinner {
+    font-size: 1.4rem;
+  }
+
+  &:active {
+    transform: scale(0.92);
+  }
+
+  &--primary {
+    width: 56px;
+    height: 56px;
+    background: var(--gps-gradient-primary);
+    color: var(--gps-accent-contrast);
+    box-shadow: var(--gps-glow-accent);
+
+    &:disabled {
+      opacity: 0.7;
+    }
+  }
+
+  &--secondary {
+    width: 44px;
+    height: 44px;
+    align-self: flex-end;
+    background: var(--gps-surface);
+    color: var(--gps-accent-2);
+    box-shadow: var(--gps-shadow-card);
+
+    ion-icon {
+      font-size: 1.2rem;
+    }
+  }
+
+  // The satellite-view toggle's "on" state — filled instead of outlined,
+  // same visual language as an active filter/tab elsewhere in the app.
+  &--active {
+    background: var(--gps-gradient-primary);
+    color: var(--gps-accent-contrast);
+    box-shadow: var(--gps-glow-accent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fab {
+    transition-property: opacity;
+  }
+
+  .fab:active {
+    transform: none;
+    opacity: 0.85;
+  }
+}
+
+// ---- Pin-placement crosshair -----------------------------------------
+
+// Fixed to the exact center of the map viewport — plain HTML, not a
+// Leaflet layer, which is what makes it stay visually centered while the
+// map pans underneath it as the user drags. `translate(-50%, -100%)`
+// shifts it so the teardrop's point (its bottom tip), not its visual
+// center, lands exactly on the crosshair position.
+.map-crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  // See the comment on `.map-fabs` — Leaflet's own panes go up to ~700
+  // and compete directly with this sibling, so it needs to clear that.
+  z-index: 1000;
+}
+
+.map-crosshair__pin {
+  display: block;
+  width: 30px;
+  height: 30px;
+  background: var(--gps-accent-2);
+  border: 3px solid var(--gps-accent-contrast);
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 10px 22px rgba(94, 92, 230, 0.4);
+  animation: crosshair-hover 1.6s var(--gps-ease-standard) infinite;
+}
+
+@keyframes crosshair-hover {
+  0%,
+  100% {
+    box-shadow: 0 10px 22px rgba(94, 92, 230, 0.4);
+  }
+  50% {
+    box-shadow: 0 14px 26px rgba(94, 92, 230, 0.55);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-crosshair__pin {
+    animation: none;
+  }
+}
+
+// ---- Persistent bottom sheet ------------------------------------------
+
+// A plain div, absolutely positioned within `<ion-content>`'s own box —
+// `bottom` is bound inline (`[style.bottom]="sheetBottomOffset()"`) to
+// the tab bar's REAL measured height, NOT `0` and not a guessed CSS
+// constant either: a real bug caught here was that `<ion-content>`'s box
+// spans the FULL page viewport, tab bar included, so `bottom: 0` put this
+// sheet's bottom edge flush with the screen's bottom edge, behind the tab
+// bar (which — being fixed UI meant to always stay reachable — wins the
+// stacking battle in that shared strip). A first fix guessed the tab
+// bar's height in CSS instead of measuring it, and THAT made the whole
+// sheet disappear on at least one real device whose actual tab bar wasn't
+// the guessed size. `<ion-modal>` was tried here even before that and
+// reverted for a related reason: its host element ALSO always spans the
+// full viewport, so the tab bar was unclickable the entire time that
+// sheet was open — wrong for a panel meant to stay present indefinitely.
+// `height` is bound inline too (`[style.height]="sheetHeight()"`) since
+// it toggles between the collapsed/expanded states; `transition` animates
+// that change, and `overflow-y: auto` on the inner content lets
+// genuinely-tall content (e.g. 'pinned' mode's longer address block)
+// scroll within whatever height is currently set instead of pushing past
+// it.
+.sheet {
   position: absolute;
   left: 0;
   right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  background: var(--gps-surface);
+  border-radius: var(--gps-radius-card) var(--gps-radius-card) 0 0;
+  box-shadow: var(--gps-shadow-card);
+  transition: height var(--gps-duration-slow) var(--gps-ease-standard);
+  overflow: hidden;
+  z-index: 20;
 }
 
-#container strong {
-  font-size: 20px;
-  line-height: 26px;
+.sheet__handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gps-space-3) 0;
+  border: none;
+  background: transparent;
+  flex-shrink: 0;
 }
 
-#container p {
-  font-size: 16px;
-  line-height: 22px;
+.sheet__handle-bar {
+  width: 36px;
+  height: 4px;
+  border-radius: var(--gps-radius-pill);
+  background: var(--gps-border-subtle);
+}
 
-  color: #8c8c8c;
+.sheet__content {
+  padding: 0 var(--gps-space-5) var(--gps-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gps-space-4);
+  overflow-y: auto;
+}
 
+.sheet__title {
+  font-size: var(--gps-text-title-size);
+  font-weight: var(--gps-text-title-weight);
+  letter-spacing: var(--gps-text-title-tracking);
   margin: 0;
 }
 
-#container a {
-  text-decoration: none;
+.sheet__header {
+  display: flex;
+  align-items: center;
+  gap: var(--gps-space-3);
+}
+
+.sheet__status {
+  display: flex;
+  align-items: center;
+  gap: var(--gps-space-2);
+}
+
+.sheet__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gps-space-3);
+  margin-top: var(--gps-space-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    transition: none;
+  }
+}
+
+// ---- Save-location bottom sheet ---------------------------------------
+
+// Same reasoning as `.sheet` above, but this sheet only ever has one
+// real open breakpoint (`0.34` — the other, `0`, is fully closed), so a
+// fixed `max-height` matching it is enough; no need to track it live.
+.save-sheet {
+  padding: var(--gps-space-2) var(--gps-space-5) var(--gps-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gps-space-5);
+  max-height: 34vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.save-sheet__title {
+  font-size: var(--gps-text-title-size);
+  font-weight: var(--gps-text-title-weight);
+  letter-spacing: var(--gps-text-title-tracking);
+  margin: 0;
+}
+
+.save-sheet__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gps-space-2);
+}
+
+.save-sheet__input {
+  --background: var(--gps-bg);
+  --padding-start: var(--gps-space-4);
+  --padding-end: var(--gps-space-4);
+  --padding-top: var(--gps-space-3);
+  --padding-bottom: var(--gps-space-3);
+  border-radius: var(--gps-radius-control);
+  font-size: var(--gps-text-body-size);
+}
+
+.save-sheet__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gps-space-3);
+  margin-top: var(--gps-space-2);
 }

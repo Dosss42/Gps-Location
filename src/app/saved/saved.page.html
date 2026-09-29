@@ -1,0 +1,57 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>Saved Places</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <ion-header collapse="condense">
+    <ion-toolbar>
+      <ion-title size="large">Saved Places</ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <div class="page">
+    @if (savedLocations().length === 0) {
+      <div class="empty-state">
+        <span class="empty-state__chip">
+          <ion-icon name="bookmarks-outline" aria-hidden="true"></ion-icon>
+        </span>
+        <p class="empty-state__title">No saved places yet</p>
+        <p class="gps-caption">
+          Get your location on the Home tab, then tap "Save This Location" to pin it here.
+        </p>
+      </div>
+    } @else {
+      <ion-list class="saved-list" lines="none">
+        @for (location of savedLocations(); track location.id) {
+          <ion-item class="saved-item">
+            <div class="saved-item__body">
+              <p class="saved-item__label">{{ location.label }}</p>
+              @if (distanceLabel(location); as distance) {
+                <span class="gps-caption">{{ distance }} away</span>
+              }
+            </div>
+
+            <div class="saved-item__end" slot="end">
+              @if (isInRange(location); as inRange) {
+                <span class="status-chip status-chip--ok">In range</span>
+              } @else if (isInRange(location) === false) {
+                <span class="status-chip status-chip--out">Out of range</span>
+              }
+
+              <button
+                type="button"
+                class="icon-button"
+                [attr.aria-label]="'Remove ' + location.label"
+                (click)="remove(location)"
+              >
+                <ion-icon name="trash-outline" aria-hidden="true"></ion-icon>
+              </button>
+            </div>
+          </ion-item>
+        }
+      </ion-list>
+    }
+  </div>
+</ion-content>

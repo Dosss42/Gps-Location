@@ -35,3 +35,311 @@
 /* @import "@ionic/angular/css/palettes/dark.always.css"; */
 /* @import "@ionic/angular/css/palettes/dark.class.css"; */
 @import '@ionic/angular/css/palettes/dark.system.css';
+
+/* Leaflet's own stylesheet — required for the map tiles/marker/controls
+   to lay out correctly. It ships from the `leaflet` package itself. */
+@import 'leaflet/dist/leaflet.css';
+
+/**
+ * Base typography, applied once here so every screen inherits it instead
+ * of each component redeclaring font-family/size. `font-optical-sizing`
+ * lets the font adjust its glyph shapes for the rendered size (a detail
+ * from the Apple-design skill's typography section) and is safe to set
+ * globally — browsers that don't support it just ignore it.
+ */
+html,
+body {
+  font-family: var(--gps-font-family);
+  font-optical-sizing: auto;
+  font-size: var(--gps-text-body-size);
+  line-height: var(--gps-text-body-leading);
+  letter-spacing: var(--gps-text-body-tracking);
+  color: var(--gps-text-primary);
+}
+
+html {
+  background: var(--gps-bg);
+}
+
+body {
+  // The gradient mesh is fixed to the viewport rather than painted on
+  // `ion-content` (which scrolls) — it should feel like it's behind the
+  // whole app, not like a background image the content scrolls over.
+  background: var(--gps-gradient-bg);
+  min-height: 100%;
+}
+
+ion-content {
+  --background: transparent;
+}
+
+/**
+ * `<ion-router-outlet>` is a structural container, never something a user
+ * should be able to "click" directly — only the actual routed page inside
+ * it should be interactive. Angular Router (via `IonicRouteStrategy`,
+ * which deliberately keeps previously-activated views cached in the DOM
+ * for fast tab switching) can leave an extra, empty, fully-sized outlet
+ * element in the tree alongside the active one — harmless visually since
+ * it's empty, but without this rule its own `position: absolute; inset:
+ * 0;` box would sit on top of the real page and silently swallow every
+ * tap. Turning pointer-events back on for the actual page content one
+ * level in is what makes the app clickable again without touching
+ * Ionic's own routing internals.
+ */
+ion-router-outlet {
+  pointer-events: none;
+
+  > * {
+    pointer-events: auto;
+  }
+}
+
+/**
+ * Shared design-system classes
+ * -----------------------------------------------------------------------
+ * Angular scopes each component's own `.scss` file to that component's
+ * template (view encapsulation) — a class defined in `home.page.scss`
+ * literally cannot style anything in `saved.page.scss`'s template, even
+ * though they render the exact same `<ion-card>`/label/value shapes. Since
+ * every page in this app needs to stay on the same type scale and the same
+ * card/chip/button look, those classes live here instead, unscoped, so
+ * "Home" and "Saved" (and any future page) share one implementation
+ * instead of two copies that can quietly drift apart. Individual pages'
+ * own `.scss` files are for genuinely page-specific layout only (e.g. the
+ * Leaflet map styling only Home needs).
+ */
+
+ion-toolbar {
+  // Translucent chrome over blurred content, per the Apple-design skill's
+  // "materials convey hierarchy without stealing focus" rule.
+  --background: var(--gps-surface-translucent);
+  --border-color: transparent;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+ion-title {
+  font-size: var(--gps-text-title-size);
+  font-weight: var(--gps-text-title-weight);
+  letter-spacing: var(--gps-text-title-tracking);
+}
+
+.gps-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  flex-shrink: 0;
+
+  ion-icon {
+    font-size: 1.05rem;
+  }
+
+  &--accent {
+    background: var(--gps-gradient-primary);
+    color: var(--gps-accent-contrast);
+    box-shadow: var(--gps-glow-accent);
+  }
+
+  &--warm {
+    background: var(--gps-gradient-warm);
+    color: var(--gps-accent-contrast);
+    box-shadow: var(--gps-glow-warm);
+  }
+
+  // The violet accent used for manually-pinned places — visually distinct
+  // from both the blue "current location" chip and the orange "address"
+  // chip, so a pinned-location header can't be mistaken for either.
+  &--accent2 {
+    background: var(--gps-accent-2);
+    color: var(--gps-accent-contrast);
+    box-shadow: 0 10px 24px rgba(94, 92, 230, 0.32);
+  }
+}
+
+.gps-title {
+  font-size: var(--gps-text-label-size);
+  font-weight: var(--gps-text-label-weight);
+  letter-spacing: var(--gps-text-label-tracking);
+  line-height: var(--gps-text-label-leading);
+  text-transform: uppercase;
+  color: var(--gps-text-secondary);
+}
+
+.gps-state {
+  display: flex;
+  align-items: center;
+  gap: var(--gps-space-3);
+}
+
+.gps-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gps-space-4);
+}
+
+.gps-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gps-space-1);
+
+  &--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.gps-label {
+  font-size: var(--gps-text-label-size);
+  font-weight: var(--gps-text-label-weight);
+  letter-spacing: var(--gps-text-label-tracking);
+  line-height: var(--gps-text-label-leading);
+  text-transform: uppercase;
+  color: var(--gps-text-secondary);
+}
+
+.gps-value {
+  font-size: var(--gps-text-value-size);
+  font-weight: var(--gps-text-value-weight);
+  letter-spacing: var(--gps-text-value-tracking);
+  line-height: var(--gps-text-value-leading);
+  color: var(--gps-text-primary);
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+
+  &--small {
+    font-size: var(--gps-text-title-size);
+  }
+
+  &--wrap {
+    font-variant-numeric: normal;
+    word-break: break-word;
+  }
+
+  // A value that should read as "the answer" (e.g. the barangay
+  // headline) borrows the gradient instead of the plain text color, the
+  // same way the icon chips do.
+  &--locality {
+    font-variant-numeric: normal;
+    background: var(--gps-gradient-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: var(--gps-space-1);
+  }
+}
+
+.gps-caption {
+  font-size: var(--gps-text-caption-size);
+  font-weight: var(--gps-text-caption-weight);
+  letter-spacing: var(--gps-text-caption-tracking);
+  line-height: var(--gps-text-caption-leading);
+  color: var(--gps-text-secondary);
+  margin: 0;
+
+  &--danger {
+    color: var(--gps-danger);
+  }
+
+  &--wrap {
+    word-break: break-word;
+  }
+}
+
+.gps-button {
+  height: 52px;
+  font-size: var(--gps-text-body-size);
+  font-weight: 600;
+  letter-spacing: var(--gps-text-body-tracking);
+  --border-radius: var(--gps-radius-control);
+  transition: transform var(--gps-duration-fast) var(--gps-ease-standard);
+
+  // Feedback on pointer-down, not on release — the Apple-design skill's
+  // #1 interaction rule. `:active` fires the instant a finger/mouse
+  // presses, well before any click/tap event completes.
+  &::part(native) {
+    transition: transform var(--gps-duration-fast) var(--gps-ease-standard);
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &--primary {
+    --background: var(--gps-gradient-primary);
+    --background-activated: var(--gps-gradient-primary);
+    --color: var(--gps-accent-contrast);
+    --box-shadow: var(--gps-glow-accent);
+  }
+
+  &--secondary {
+    --border-color: var(--gps-accent);
+    --border-width: 1.5px;
+    --color: var(--gps-accent);
+  }
+
+  &--ghost {
+    --background: transparent;
+    --box-shadow: none;
+    --color: var(--gps-text-secondary);
+  }
+}
+
+.gps-status__dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--gps-radius-pill);
+  background: var(--gps-text-secondary);
+  transition: background var(--gps-duration-base) var(--gps-ease-standard);
+
+  &--ok {
+    background: var(--gps-success);
+
+    // A soft repeating ring around the dot — the small "this is live"
+    // detail that separates a status indicator from a static bullet point.
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: inherit;
+      border: 1.5px solid var(--gps-success);
+      opacity: 0.6;
+      animation: gps-pulse 2s var(--gps-ease-standard) infinite;
+    }
+  }
+
+  &--error {
+    background: var(--gps-danger);
+  }
+}
+
+@keyframes gps-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gps-button,
+  .gps-button::part(native),
+  .gps-status__dot {
+    transition-property: opacity;
+  }
+
+  .gps-button:active {
+    transform: none;
+    opacity: 0.8;
+  }
+
+  .gps-status__dot--ok::after {
+    animation: none;
+    display: none;
+  }
+}

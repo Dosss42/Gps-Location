@@ -3,7 +3,18 @@
 // The list of file replacements can be found in `angular.json`.
 
 export const environment = {
-  production: false
+  production: false,
+  geocoding: {
+    // Nominatim is free and needs no API key. Its usage policy asks
+    // callers to self-identify (since browser `fetch` can't set a custom
+    // User-Agent header); we do that with this `email` query param instead.
+    // Not a secret — safe to keep in source control.
+    nominatimBaseUrl: 'https://nominatim.openstreetmap.org',
+    // Optional: put a contact email here per Nominatim's usage policy
+    // (https://operations.osmfoundation.org/policies/nominatim/) if you plan
+    // on heavier request volume. Leave blank for normal student-project use.
+    contactEmail: '',
+  },
 };
 
 /*

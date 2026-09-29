@@ -1,20 +1,294 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
-    <ion-title>
-      Blank
-    </ion-title>
+    <ion-title>Where Am I?</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Blank</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<ion-content [fullscreen]="true" [scrollY]="false">
+  <div class="map-stage">
+    <div class="gps-map" [class.gps-map--satellite]="isSatelliteView()" #mapContainer></div>
 
-  <div id="container">
-    <strong>Ready to create an app?</strong>
-    <p>Start with Ionic <a target="_blank" rel="noopener noreferrer" href="https://ionicframework.com/docs/components">UI Components</a></p>
+    <!-- The crosshair is plain HTML fixed to the viewport center, not a
+         Leaflet layer — that's what makes it stay visually centered while
+         the map pans underneath it as the user drags (the Google
+         Maps/Uber "choose a location" interaction). -->
+    @if (sheetMode() === 'pin-mode') {
+      <div class="map-crosshair" aria-hidden="true">
+        <span class="map-crosshair__pin"></span>
+      </div>
+    }
+
+    @if (sheetMode() !== 'pin-mode') {
+      <div class="map-fabs" [style.bottom]="fabBottomOffset()">
+        <button
+          type="button"
+          class="fab fab--secondary"
+          [class.fab--active]="isSatelliteView()"
+          [attr.aria-label]="isSatelliteView() ? 'Switch to street map' : 'Switch to satellite view'"
+          (click)="toggleMapView()"
+        >
+          <ion-icon name="layers-outline" aria-hidden="true"></ion-icon>
+        </button>
+
+        <button
+          type="button"
+          class="fab fab--secondary"
+          aria-label="Pin a place"
+          (click)="enterPinMode()"
+        >
+          <ion-icon name="pin-outline" aria-hidden="true"></ion-icon>
+        </button>
+
+        <button
+          type="button"
+          class="fab fab--primary"
+          aria-label="Get my location"
+          [disabled]="isLocating()"
+          (click)="getMyLocation()"
+        >
+          @if (isLocating()) {
+            <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
+          } @else {
+            <ion-icon name="locate-outline" aria-hidden="true"></ion-icon>
+          }
+        </button>
+      </div>
+    }
   </div>
+
+  <!-- Persistent bottom sheet: a plain div (not <ion-modal> — see the
+       comment on `isSheetExpanded` in home.page.ts for why), always
+       present, with a tap-to-expand handle instead of a drag gesture. -->
+  <div class="sheet" [style.height]="sheetHeight()" [style.bottom]="sheetBottomOffset()">
+    <button
+      type="button"
+      class="sheet__handle"
+      [attr.aria-label]="isSheetExpanded() ? 'Collapse details' : 'Expand details'"
+      (click)="toggleSheetExpanded()"
+    >
+      <span class="sheet__handle-bar" aria-hidden="true"></span>
+    </button>
+
+    <div class="sheet__content">
+      @switch (sheetMode()) {
+        @case ('pin-mode') {
+          <p class="sheet__title">Drag the map to position your pin</p>
+            @if (pinCandidateLatLng(); as center) {
+              <p class="gps-caption">
+                Positioning at {{ center.lat.toFixed(5) }}, {{ center.lng.toFixed(5) }}
+              </p>
+            }
+            <div class="sheet__actions">
+              <ion-button
+                expand="block"
+                shape="round"
+                class="gps-button gps-button--primary"
+                [disabled]="isPinGeocodeLoading()"
+                (click)="confirmPin()"
+              >
+                @if (isPinGeocodeLoading()) {
+                  <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
+                } @else {
+                  <ion-icon slot="start" name="checkmark-outline" aria-hidden="true"></ion-icon>
+                  Confirm Pin
+                }
+              </ion-button>
+              <ion-button
+                expand="block"
+                shape="round"
+                fill="clear"
+                class="gps-button gps-button--ghost"
+                (click)="cancelPinMode()"
+              >
+                <ion-icon slot="start" name="close-outline" aria-hidden="true"></ion-icon>
+                Cancel
+              </ion-button>
+            </div>
+          }
+          @case ('pinned') {
+            <div class="sheet__header">
+              <span class="gps-chip gps-chip--accent2">
+                <ion-icon name="pin-outline" aria-hidden="true"></ion-icon>
+              </span>
+              <span class="gps-title">Pinned Location</span>
+            </div>
+
+            @if (pinnedLocation(); as pin) {
+              @if (pin.address?.locality; as locality) {
+                <p class="gps-value gps-value--locality">Brgy. {{ locality }}</p>
+              }
+              <p class="gps-caption gps-caption--wrap">
+                {{
+                  pin.address?.displayName ??
+                    (pin.coordinates.latitude.toFixed(5) + ', ' + pin.coordinates.longitude.toFixed(5))
+                }}
+              </p>
+            }
+
+            <div class="sheet__actions">
+              <ion-button
+                expand="block"
+                shape="round"
+                class="gps-button gps-button--primary"
+                (click)="openSaveSheet()"
+              >
+                <ion-icon slot="start" name="bookmark-outline" aria-hidden="true"></ion-icon>
+                Save This Location
+              </ion-button>
+              <ion-button
+                expand="block"
+                shape="round"
+                fill="clear"
+                class="gps-button gps-button--ghost"
+                (click)="useMyLocationInstead()"
+              >
+                Use my location instead
+              </ion-button>
+            </div>
+          }
+          @default {
+            <div class="sheet__status" role="status">
+              <span
+                class="gps-status__dot"
+                [class.gps-status__dot--ok]="coordinates() !== null"
+                [class.gps-status__dot--error]="errorMessage() !== null"
+              ></span>
+              <span class="gps-caption">
+                @if (coordinates() !== null) {
+                  Location available
+                } @else if (errorMessage() !== null) {
+                  Location unavailable
+                } @else {
+                  Waiting for location
+                }
+              </span>
+            </div>
+
+            @switch (true) {
+              @case (isLocating()) {
+                <div class="gps-state">
+                  <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
+                  <p class="gps-caption">
+                    {{ locationStatus().kind === 'requesting-permission'
+                      ? 'Requesting location permission…'
+                      : 'Getting your current location…' }}
+                  </p>
+                </div>
+              }
+              @case (errorMessage() !== null) {
+                <p class="gps-caption gps-caption--danger">{{ errorMessage() }}</p>
+              }
+              @case (coordinates() !== null) {
+                <div class="gps-grid">
+                  <div class="gps-field">
+                    <span class="gps-label">Latitude</span>
+                    <span class="gps-value">{{ coordinates()!.latitude.toFixed(5) }}</span>
+                  </div>
+                  <div class="gps-field">
+                    <span class="gps-label">Longitude</span>
+                    <span class="gps-value">{{ coordinates()!.longitude.toFixed(5) }}</span>
+                  </div>
+                  <div class="gps-field gps-field--wide">
+                    <span class="gps-label">Accuracy</span>
+                    <span class="gps-value gps-value--small">±{{ coordinates()!.accuracy.toFixed(0) }} meters</span>
+                  </div>
+                </div>
+
+                @if (localityText() !== null) {
+                  <p class="gps-value gps-value--locality">Brgy. {{ localityText() }}</p>
+                }
+                @if (addressText() !== null) {
+                  <p class="gps-caption gps-caption--wrap">{{ addressText() }}</p>
+                } @else if (geocodeStatus().kind === 'loading') {
+                  <p class="gps-caption">Looking up address…</p>
+                } @else if (geocodeStatus().kind === 'error') {
+                  <p class="gps-caption gps-caption--danger">Unable to determine address.</p>
+                }
+              }
+              @default {
+                <p class="gps-caption">Tap the locate button to get your position.</p>
+              }
+            }
+
+            <div class="sheet__actions">
+              <ion-button
+                expand="block"
+                shape="round"
+                fill="outline"
+                class="gps-button gps-button--secondary"
+                [disabled]="isLocating() || isSpeaking()"
+                (click)="tellMeWhereIAm()"
+              >
+                <ion-icon slot="start" name="volume-high-outline" aria-hidden="true"></ion-icon>
+                Tell Me Where I Am
+              </ion-button>
+              <ion-button
+                expand="block"
+                shape="round"
+                fill="clear"
+                class="gps-button gps-button--ghost"
+                [disabled]="activeCoordinates() === null"
+                (click)="openSaveSheet()"
+              >
+                <ion-icon slot="start" name="bookmark-outline" aria-hidden="true"></ion-icon>
+                Save This Location
+              </ion-button>
+            </div>
+        }
+      }
+    </div>
+  </div>
+
+  <!-- Save-location bottom sheet. `breakpoints` + `initialBreakpoint` is
+       what turns an <ion-modal> into a native-feeling bottom sheet instead
+       of a full-screen dialog — the standard "modern mobile app" pattern
+       for a short, focused action like this one. -->
+  <ion-modal
+    [isOpen]="isSaveSheetOpen()"
+    [breakpoints]="[0, 0.34]"
+    [initialBreakpoint]="0.34"
+    (didDismiss)="closeSaveSheet()"
+  >
+    <ng-template>
+      <div class="save-sheet">
+        <p class="save-sheet__title">Save This Location</p>
+
+        <div class="save-sheet__field">
+          <span class="gps-label">Name</span>
+          <input
+            class="save-sheet__input"
+            type="text"
+            placeholder="e.g. Home, School, Brgy. Hall"
+            [value]="saveLabel()"
+            (input)="onSaveLabelInput($any($event.target).value)"
+          />
+          <p class="gps-caption">Marks a {{ defaultRangeMeters }} m radius around this exact spot.</p>
+          @if (saveErrorMessage(); as error) {
+            <p class="gps-caption gps-caption--danger">{{ error }}</p>
+          }
+        </div>
+
+        <div class="save-sheet__actions">
+          <ion-button
+            expand="block"
+            shape="round"
+            class="gps-button gps-button--primary"
+            [disabled]="saveLabel().trim() === ''"
+            (click)="confirmSave()"
+          >
+            Save
+          </ion-button>
+          <ion-button
+            expand="block"
+            shape="round"
+            fill="clear"
+            class="gps-button gps-button--ghost"
+            (click)="closeSaveSheet()"
+          >
+            Cancel
+          </ion-button>
+        </div>
+      </div>
+    </ng-template>
+  </ion-modal>
 </ion-content>

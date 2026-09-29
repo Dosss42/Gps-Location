@@ -1,0 +1,138 @@
+// `.gps-caption`, spacing, and radius tokens are shared globally
+// (src/global.scss) — this file only holds layout specific to this page's
+// list and empty state.
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gps-space-4);
+  padding: var(--gps-space-5);
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--gps-space-3);
+  padding: var(--gps-space-9) var(--gps-space-5);
+}
+
+.empty-state__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: var(--gps-gradient-warm);
+  color: var(--gps-accent-contrast);
+  box-shadow: var(--gps-glow-warm);
+
+  ion-icon {
+    font-size: 1.5rem;
+  }
+}
+
+.empty-state__title {
+  font-size: var(--gps-text-title-size);
+  font-weight: var(--gps-text-title-weight);
+  letter-spacing: var(--gps-text-title-tracking);
+  margin: 0;
+}
+
+.saved-list {
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gps-space-3);
+}
+
+.saved-item {
+  --background: var(--gps-surface);
+  --padding-start: var(--gps-space-4);
+  --inner-padding-end: var(--gps-space-4);
+  border-radius: var(--gps-radius-card);
+  box-shadow: var(--gps-shadow-card);
+  overflow: hidden;
+}
+
+.saved-item__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gps-space-1);
+  padding: var(--gps-space-3) 0;
+}
+
+.saved-item__label {
+  font-size: var(--gps-text-value-size);
+  font-weight: var(--gps-text-value-weight);
+  letter-spacing: var(--gps-text-value-tracking);
+  line-height: var(--gps-text-value-leading);
+  margin: 0;
+}
+
+.status-chip {
+  padding: var(--gps-space-1) var(--gps-space-3);
+  border-radius: var(--gps-radius-pill);
+  font-size: var(--gps-text-caption-size);
+  font-weight: 600;
+  white-space: nowrap;
+
+  &--ok {
+    background: rgba(52, 199, 89, 0.15);
+    color: var(--gps-success);
+  }
+
+  &--out {
+    background: rgba(60, 60, 67, 0.1);
+    color: var(--gps-text-secondary);
+  }
+}
+
+.saved-item__end {
+  display: flex;
+  align-items: center;
+  gap: var(--gps-space-3);
+}
+
+// A plain, always-visible delete button instead of hiding the action
+// behind a swipe gesture — swipe-to-delete is easy to miss if you don't
+// already know it's there, especially for a first-time user.
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--gps-text-secondary);
+  transition:
+    background var(--gps-duration-fast) var(--gps-ease-standard),
+    color var(--gps-duration-fast) var(--gps-ease-standard),
+    transform var(--gps-duration-fast) var(--gps-ease-standard);
+
+  ion-icon {
+    font-size: 1.05rem;
+  }
+
+  &:active {
+    background: rgba(255, 59, 48, 0.12);
+    color: var(--gps-danger);
+    transform: scale(0.92);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon-button {
+    transition-property: background, color;
+  }
+
+  .icon-button:active {
+    transform: none;
+  }
+}
